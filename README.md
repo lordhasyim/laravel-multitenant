@@ -256,6 +256,11 @@ DB::enableQueryLog();
 dd(DB::getQueryLog());
 ```
 
+## In Case you have problem with jwt secret
+```bash
+php artisan jwt:secret
+```
+
 ## Development Workflow
 
 1. **Add new features**: Work on central app first, then tenant-specific features
@@ -273,7 +278,7 @@ dd(DB::getQueryLog());
 
 ## Next Steps
 
-- [ ] Implement JWT authentication
+- [ ] Implement JWT authentication (on progress, basic auth is already implemented)
 - [ ] Add permission system (master permissions + tenant roles)
 - [ ] Create API endpoints for tenant management
 - [ ] Add user management per tenant
