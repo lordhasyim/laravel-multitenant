@@ -1,61 +1,284 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Laravel Multi-Tenant API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Laravel 12 multi-tenant REST API application with domain-based tenant identification, custom database per tenant, and JWT authentication.
 
-## About Laravel
+## Tech Stack
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Laravel**: 12.25.0
+- **PHP**: 8.4.1
+- **MySQL**: 8.0.41
+- **Multi-tenancy**: [ArchTech Tenancy v3.9.1](https://github.com/archtechx/tenancy)
+- **Authentication**: JWT (tymondesigns/jwt-auth)
+- **Permissions**: Spatie Laravel Permission
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Architecture Overview
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Landlord Database**: `laravel_multitenant_landlord` (central app, tenants, domains)
+- **Tenant Databases**: `tenant_{tenant_id}` (isolated per tenant)
+- **Domain Identification**: `tenant.multitenant-api.test` format
+- **Permission System**: Master permissions in landlord DB, tenant-specific roles
 
-## Learning Laravel
+## Installation
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Prerequisites
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Ensure you have these installed on your system:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+# Verify versions
+php --version          # Should be >= 8.4.1
+composer --version     # Latest version
+mysql --version        # Should be >= 8.0.41
 
-## Laravel Sponsors
+# Required PHP extensions
+php -m | grep -E "(pdo|mysql|mbstring|xml|ctype|json|tokenizer|openssl|curl)"
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Step 1: Clone Repository
 
-### Premium Partners
+```bash
+git clone <repository-url>
+cd laravel-multitenant-api
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+### Step 2: Install Dependencies
 
-## Contributing
+```bash
+# Install PHP dependencies
+composer install
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# Copy environment file
+cp .env.example .env
 
-## Code of Conduct
+# Generate application key
+php artisan key:generate
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Step 3: Environment Configuration
 
-## Security Vulnerabilities
+Edit `.env` file:
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```env
+APP_NAME="Multi-Tenant API"
+APP_URL=http://multitenant-api.test
+APP_ENV=local
+APP_DEBUG=true
 
-## License
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=laravel_multitenant_landlord
+DB_USERNAME=root
+DB_PASSWORD=root
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Step 4: Database Setup
+
+```bash
+# Create landlord database
+mysql -u root -p
+```
+
+In MySQL:
+```sql
+CREATE DATABASE laravel_multitenant_landlord;
+EXIT;
+```
+
+### Step 5: Run Migrations
+
+```bash
+# Run landlord database migrations
+php artisan migrate
+```
+
+### Step 6: Local Domain Setup
+
+Add these lines to `/etc/hosts`:
+
+```bash
+sudo nano /etc/hosts
+```
+
+Add:
+```
+127.0.0.1   multitenant-api.test
+127.0.0.1   alamsegar.multitenant-api.test
+127.0.0.1   kretekjaya.multitenant-api.test
+127.0.0.1   starcompany.multitenant-api.test
+```
+
+### Step 7: Create Sample Tenants
+
+```bash
+# Create tenants using custom command
+php artisan tenant:create alamsegar "Alam Segar Company" "admin@alamsegar.com" "alamsegar.multitenant-api.test"
+
+php artisan tenant:create kretekjaya "Kretek Jaya Company" "admin@kretekjaya.com" "kretekjaya.multitenant-api.test"
+```
+
+### Step 8: Start Development Server
+
+```bash
+php artisan serve --host=0.0.0.0 --port=8000
+```
+
+## Testing the Setup
+
+### Central Application (Landlord)
+- **URL**: `http://multitenant-api.test:8000`
+- **Test Route**: `http://multitenant-api.test:8000/central`
+- **Expected**: "This is the CENTRAL (landlord) application!"
+
+### Tenant Applications
+- **Tenant 1**: `http://alamsegar.multitenant-api.test:8000`
+- **Tenant 2**: `http://kretekjaya.multitenant-api.test:8000`
+- **Expected**: "This is your multi-tenant application. The id of the current tenant is {tenant_id}"
+
+## Database Structure
+
+### Landlord Database (`laravel_multitenant_landlord`)
+
+**Tenants Table:**
+```sql
+- id (varchar) - Tenant identifier (e.g., "alamsegar")
+- name (varchar) - Company name
+- email (varchar) - Admin email
+- domain (varchar) - Tenant domain
+- db_name (varchar) - Tenant database name
+- db_host (varchar) - Database host
+- db_port (varchar) - Database port
+- db_username (varchar) - Database username
+- db_password (varchar) - Database password
+- created_at, updated_at, data (json)
+```
+
+**Domains Table:**
+```sql
+- id (int) - Auto increment
+- domain (varchar) - Domain name
+- tenant_id (varchar) - Foreign key to tenants
+- created_at, updated_at
+```
+
+### Tenant Databases
+Each tenant has its own database named `tenant_{tenant_id}`:
+- `tenant_alamsegar`
+- `tenant_kretekjaya`
+- etc.
+
+## Artisan Commands
+
+### Tenant Management
+
+```bash
+# Create a new tenant
+php artisan tenant:create {id} {name} {email} {domain}
+
+# Example
+php artisan tenant:create mycompany "My Company Ltd" "admin@mycompany.com" "mycompany.multitenant-api.test"
+
+# Run migrations on all tenant databases
+php artisan tenants:migrate
+
+# Run seeders on all tenant databases
+php artisan tenants:seed
+```
+
+### Standard Laravel Commands
+
+```bash
+# Clear application caches
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+
+# Check migration status
+php artisan migrate:status
+
+# List all routes
+php artisan route:list
+```
+
+## Project Structure
+
+```
+app/
+├── Console/Commands/
+│   └── CreateTenant.php       # Custom tenant creation command
+├── Models/
+│   ├── Tenant.php            # Tenant model with custom fields
+│   └── Domain.php            # Domain model
+config/
+├── tenancy.php               # Tenancy configuration
+database/
+├── migrations/
+│   ├── tenant/               # Tenant-specific migrations
+│   ├── *_create_tenants_table.php
+│   ├── *_create_domains_table.php
+│   └── *_add_fields_to_tenants_table.php
+routes/
+├── web.php                   # Central app routes
+├── tenant.php               # Tenant app routes
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**1. "Call to undefined method domains()"**
+- Ensure models are properly configured in `config/tenancy.php`
+- Check that custom models extend the correct base classes
+
+**2. "404 Not Found" on tenant domains**
+- Verify `/etc/hosts` entries are correct
+- Check `central_domains` configuration in `config/tenancy.php`
+- Ensure tenant and domain records exist in database
+
+**3. Database connection errors**
+- Verify MySQL credentials in `.env`
+- Ensure landlord database exists
+- Check MySQL service is running
+
+**4. Tenant database not created**
+- Check tenant creation completed successfully
+- Verify database naming matches configuration
+- Run `SHOW DATABASES LIKE 'tenant%';` in MySQL
+
+### Logs and Debugging
+
+```bash
+# Check Laravel logs
+tail -f storage/logs/laravel.log
+
+# Enable query logging (add to AppServiceProvider)
+DB::enableQueryLog();
+dd(DB::getQueryLog());
+```
+
+## Development Workflow
+
+1. **Add new features**: Work on central app first, then tenant-specific features
+2. **Database changes**: Create migrations for both landlord and tenant databases
+3. **Testing**: Test on multiple tenants to ensure isolation
+4. **Domain management**: Add new domains to `/etc/hosts` for local testing
+
+## Production Considerations
+
+- Use proper domain/subdomain setup with SSL certificates
+- Implement proper database credentials per tenant
+- Set up automated tenant provisioning
+- Configure proper caching strategies
+- Implement database backup strategies per tenant
+
+## Next Steps
+
+- [ ] Implement JWT authentication
+- [ ] Add permission system (master permissions + tenant roles)
+- [ ] Create API endpoints for tenant management
+- [ ] Add user management per tenant
+- [ ] Implement proper error handling and logging
+
+---
+
+**Note**: This is a development setup. For production deployment, additional security, performance, and reliability configurations are required.
