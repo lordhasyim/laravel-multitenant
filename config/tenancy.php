@@ -11,7 +11,9 @@ use App\Models\Tenant;
 return [
     'tenant_model' => Tenant::class,
     'domain_model' => Domain::class,
-    'id_generator' => Stancl\Tenancy\UUIDGenerator::class,
+    // 'id_generator' => Stancl\Tenancy\UUIDGenerator::class,
+    'id_generator' => null,
+
 
 
     /**
@@ -22,8 +24,8 @@ return [
     'central_domains' => [
         '127.0.0.1',
         'localhost',
-        'multitenant-api.test',
-        'multitenant-api.test:8000',  // Add this for development with port
+        'multitenant.test',
+        'multitenant.test:8000',
 
     ],
 

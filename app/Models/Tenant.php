@@ -14,6 +14,10 @@ class Tenant extends BaseTenant implements TenantWithDatabase
 {
      use HasDatabase, HasDomains;
 
+    // Laravel will handle auto-incrementing integer ID automatically
+    public $incrementing = true;
+    protected $keyType = 'int';
+
     protected $fillable = [
         'id',
         'name',
