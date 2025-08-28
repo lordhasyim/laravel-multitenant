@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProductController;
 
 // Test route
 Route::get('test', function () {
@@ -23,7 +24,7 @@ Route::middleware(['tenant'])->group(function () {
     Route::post('login', [AuthController::class, 'login']);
 
     // Protected endpoints
-    Route::middleware(['auth:api'])->group(function () {
+    Route::middleware(['auth:api', 'tenant_token'])->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
         Route::get('user', [AuthController::class, 'user']);
@@ -32,5 +33,10 @@ Route::middleware(['tenant'])->group(function () {
         // Route::apiResource('products', ProductController::class);
         // Route::apiResource('orders', OrderController::class);
         // Route::apiResource('customers', CustomerController::class);
+
+        // Product endpoints
+        Route::get('products', [ProductController::class, 'index']);
+        Route::post('products', [ProductController::class, 'store']);
+        Route::get('products/{id}', [ProductController::class, 'show']);
     });
 });
