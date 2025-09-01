@@ -1,289 +1,405 @@
-# Laravel Multi-Tenant API
+# Laravel Multi-Tenant REST API
 
-A Laravel 12 multi-tenant REST API application with domain-based tenant identification, custom database per tenant, and JWT authentication.
+A comprehensive Laravel 12 REST API application with multi-tenancy, JWT authentication, and role-based access control (RBAC).
 
 ## Tech Stack
 
-- **Laravel**: 12.25.0
-- **PHP**: 8.4.1
-- **MySQL**: 8.0.41
-- **Multi-tenancy**: [ArchTech Tenancy v3.9.1](https://github.com/archtechx/tenancy)
-- **Authentication**: JWT (tymondesigns/jwt-auth)
-- **Permissions**: Spatie Laravel Permission
+- **Laravel:** 12.x
+- **PHP:** 8.4.1
+- **Database:** MySQL 8.0.41
+- **Multi-Tenancy:** [stancl/tenancy](https://github.com/archtechx/tenancy)
+- **Authentication:** JWT via [tymon/jwt-auth](https://github.com/tymondesigns/jwt-auth)
+- **Authorization:** [spatie/laravel-permission](https://github.com/spatie/laravel-permission)
 
-## Architecture Overview
+## Features
 
-- **Landlord Database**: `laravel_multitenant_landlord` (central app, tenants, domains)
-- **Tenant Databases**: `tenant_{tenant_id}` (isolated per tenant)
-- **Domain Identification**: `tenant.multitenant-api.test` format
-- **Permission System**: Master permissions in landlord DB, tenant-specific roles
+- ✅ Multi-tenant architecture with separate databases per tenant
+- ✅ JWT-based authentication
+- ✅ Role-based access control (RBAC)
+- ✅ Master permission management
+- ✅ Tenant-specific roles and permissions
+- ✅ Comprehensive API endpoints
 
 ## Installation
 
 ### Prerequisites
 
-Ensure you have these installed on your system:
+- PHP 8.4.1 or higher
+- Composer
+- MySQL 8.0.41 or higher
+- Node.js (for frontend assets, if needed)
 
-```bash
-# Verify versions
-php --version          # Should be >= 8.4.1
-composer --version     # Latest version
-mysql --version        # Should be >= 8.0.41
+### Setup Steps
 
-# Required PHP extensions
-php -m | grep -E "(pdo|mysql|mbstring|xml|ctype|json|tokenizer|openssl|curl)"
-```
-
-### Step 1: Clone Repository
-
+1. **Clone the repository**
 ```bash
 git clone <repository-url>
 cd laravel-multitenant-api
 ```
 
-### Step 2: Install Dependencies
-
+2. **Install dependencies**
 ```bash
-# Install PHP dependencies
 composer install
+```
 
-# Copy environment file
+3. **Environment configuration**
+```bash
 cp .env.example .env
-
-# Generate application key
 php artisan key:generate
 ```
 
-### Step 3: Environment Configuration
-
-Edit `.env` file:
-
+4. **Configure your `.env` file**
 ```env
-APP_NAME="Multi-Tenant API"
-APP_URL=http://multitenant-api.test
+APP_NAME="MultiTenant API"
 APP_ENV=local
+APP_KEY=base64:your-app-key
 APP_DEBUG=true
+APP_URL=http://localhost
 
-DB_CONNECTION=mysql
+# Central Database Configuration
+DB_CONNECTION=central
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_DATABASE=laravel_multitenant_landlord
+DB_DATABASE=multitenant_central
 DB_USERNAME=root
-DB_PASSWORD=root
+DB_PASSWORD=your_password
+
+# JWT Configuration
+JWT_SECRET=your-jwt-secret-key
+JWT_TTL=60
 ```
 
-### Step 4: Database Setup
-
-```bash
-# Create landlord database
-mysql -u root -p
-```
-
-In MySQL:
+5. **Create databases**
 ```sql
-CREATE DATABASE laravel_multitenant_landlord;
-EXIT;
+-- Create central database
+CREATE DATABASE multitenant_central;
+
+-- Tenant databases will be created automatically
 ```
 
-### Step 5: Run Migrations
+6. **Run migrations**
+```bash
+# Central database migrations
+php artisan migrate --database=central
+
+# Generate JWT secret
+php artisan jwt:secret
+```
+
+7. **Seed master data**
+```bash
+# Seed master permissions (central database)
+php artisan db:seed --class=MasterPermissionSeeder
+```
+
+## Multi-Tenancy Setup
+
+### Creating Tenants
+
+Tenants are created with their own database and configuration:
+
+```php
+// Create a tenant programmatically
+$tenant = Tenant::create(['id' => 'tenant1']);
+$tenant->domains()->create(['domain' => 'tenant1.yourdomain.com']);
+```
+
+### Tenant Database Setup
+
+For each tenant, run:
 
 ```bash
-# Run landlord database migrations
-php artisan migrate
-```
+# Migrate tenant database
+php artisan tenants:migrate
 
-### Step 6: Local Domain Setup
+# Seed tenant permissions and roles
+php artisan tenants:seed --class=TenantPermissionSeeder
+php artisan tenants:seed --class=TenantRoleSeeder
 
-Add these lines to `/etc/hosts`:
-
-```bash
-sudo nano /etc/hosts
-```
-
-Add:
-```
-127.0.0.1   multitenant-api.test
-127.0.0.1   alamsegar.multitenant-api.test
-127.0.0.1   kretekjaya.multitenant-api.test
-127.0.0.1   starcompany.multitenant-api.test
-```
-
-### Step 7: Create Sample Tenants
-
-```bash
-# Create tenants using custom command
-php artisan tenant:create alamsegar "Alam Segar Company" "admin@alamsegar.com" "alamsegar.multitenant-api.test"
-
-php artisan tenant:create kretekjaya "Kretek Jaya Company" "admin@kretekjaya.com" "kretekjaya.multitenant-api.test"
-```
-
-### Step 8: Start Development Server
-
-```bash
-php artisan serve --host=0.0.0.0 --port=8000
+# Or run all tenant seeders
+php artisan tenants:seed
 ```
 
 ## Testing the Setup
 
-### Central Application (Landlord)
-- **URL**: `http://multitenant-api.test:8000`
-- **Test Route**: `http://multitenant-api.test:8000/central`
-- **Expected**: "This is the CENTRAL (landlord) application!"
-
 ### Tenant Applications
-- **Tenant 1**: `http://alamsegar.multitenant-api.test:8000`
-- **Tenant 2**: `http://kretekjaya.multitenant-api.test:8000`
+- **Tenant 1**: `http://multitenant.test:8000`
+- **Tenant 2**: `http://multitenant.test:8000`
 - **Expected**: "This is your multi-tenant application. The id of the current tenant is {tenant_id}"
 
-## Database Structure
+### API Testing with Postman/Insomnia
 
-### Landlord Database (`laravel_multitenant_landlord`)
+1. Set base URL to tenant domain (e.g., `http://tenant1.yourdomain.com`)
+2. Register a user or login to get JWT token
+3. Add `Authorization: Bearer {token}` header to protected routes
+4. Add X-Tenant-Id : tenant_id in header
+    - **X-Tenant-Id**: `1`
+5. Test CRUD operations based on user permissions
 
-**Tenants Table:**
-```sql
-- id (varchar) - Tenant identifier (e.g., "alamsegar")
-- name (varchar) - Company name
-- email (varchar) - Admin email
-- domain (varchar) - Tenant domain
-- db_name (varchar) - Tenant database name
-- db_host (varchar) - Database host
-- db_port (varchar) - Database port
-- db_username (varchar) - Database username
-- db_password (varchar) - Database password
-- created_at, updated_at, data (json)
+
+## Permission System
+
+### Master Permissions (Central Database)
+
+Master permissions are defined centrally and synced to tenant databases:
+
+- **Products:** `create-product`, `view-product`, `edit-product`, `delete-product`
+- **Users:** `create-user`, `view-user`, `edit-user`, `delete-user`
+
+### Tenant-Specific Roles
+
+Each tenant can have custom roles based on their business needs:
+
+**Tenant 1 (Alamsegar):**
+- `manager` - Full product permissions
+- `operator` - View-only permissions
+- `admin` - All permissions
+
+**Tenant 2 (Kretekjaya):**
+- `supervisor` - Full product permissions  
+- `staff` - View-only permissions
+- `admin` - All permissions
+
+## API Endpoints
+
+### Authentication Endpoints
+
+All authentication endpoints work within tenant context.
+
+#### Register User
+```http
+POST /api/register
+Content-Type: application/json
+Host: tenant1.yourdomain.com
+
+{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "password123",
+    "password_confirmation": "password123"
+}
 ```
 
-**Domains Table:**
-```sql
-- id (int) - Auto increment
-- domain (varchar) - Domain name
-- tenant_id (varchar) - Foreign key to tenants
-- created_at, updated_at
+**Response:**
+```json
+{
+    "message": "User registered successfully",
+    "user": {
+        "id": 1,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "created_at": "2025-08-29T10:00:00Z",
+        "updated_at": "2025-08-29T10:00:00Z"
+    },
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+}
 ```
 
-### Tenant Databases
-Each tenant has its own database named `tenant_{tenant_id}`:
-- `tenant_alamsegar`
-- `tenant_kretekjaya`
-- etc.
+#### Login
+```http
+POST /api/login
+Content-Type: application/json
+Host: tenant1.yourdomain.com
 
-## Artisan Commands
-
-### Tenant Management
-
-```bash
-# Create a new tenant
-php artisan tenant:create {id} {name} {email} {domain}
-
-# Example
-php artisan tenant:create mycompany "My Company Ltd" "admin@mycompany.com" "mycompany.multitenant-api.test"
-
-# Run migrations on all tenant databases
-php artisan tenants:migrate
-
-# Run seeders on all tenant databases
-php artisan tenants:seed
+{
+    "email": "john@example.com",
+    "password": "password123"
+}
 ```
 
-### Standard Laravel Commands
-
-```bash
-# Clear application caches
-php artisan config:clear
-php artisan route:clear
-php artisan view:clear
-
-# Check migration status
-php artisan migrate:status
-
-# List all routes
-php artisan route:list
+**Response:**
+```json
+{
+    "message": "Login successful",
+    "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+    "user": {
+        "id": 1,
+        "name": "John Doe",
+        "email": "john@example.com"
+    }
+}
 ```
 
-## Project Structure
-
-```
-app/
-├── Console/Commands/
-│   └── CreateTenant.php       # Custom tenant creation command
-├── Models/
-│   ├── Tenant.php            # Tenant model with custom fields
-│   └── Domain.php            # Domain model
-config/
-├── tenancy.php               # Tenancy configuration
-database/
-├── migrations/
-│   ├── tenant/               # Tenant-specific migrations
-│   ├── *_create_tenants_table.php
-│   ├── *_create_domains_table.php
-│   └── *_add_fields_to_tenants_table.php
-routes/
-├── web.php                   # Central app routes
-├── tenant.php               # Tenant app routes
+#### Get User Profile
+```http
+GET /api/me
+Authorization: Bearer {token}
+Host: tenant1.yourdomain.com
 ```
 
-## Troubleshooting
-
-### Common Issues
-
-**1. "Call to undefined method domains()"**
-- Ensure models are properly configured in `config/tenancy.php`
-- Check that custom models extend the correct base classes
-
-**2. "404 Not Found" on tenant domains**
-- Verify `/etc/hosts` entries are correct
-- Check `central_domains` configuration in `config/tenancy.php`
-- Ensure tenant and domain records exist in database
-
-**3. Database connection errors**
-- Verify MySQL credentials in `.env`
-- Ensure landlord database exists
-- Check MySQL service is running
-
-**4. Tenant database not created**
-- Check tenant creation completed successfully
-- Verify database naming matches configuration
-- Run `SHOW DATABASES LIKE 'tenant%';` in MySQL
-
-### Logs and Debugging
-
-```bash
-# Check Laravel logs
-tail -f storage/logs/laravel.log
-
-# Enable query logging (add to AppServiceProvider)
-DB::enableQueryLog();
-dd(DB::getQueryLog());
+**Response:**
+```json
+{
+    "user": {
+        "id": 1,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "roles": ["manager"],
+        "permissions": ["create-product", "view-product", "edit-product", "delete-product"]
+    },
+    "tenant": "tenant1"
+}
 ```
 
-## In Case you have problem with jwt secret
-```bash
-php artisan jwt:secret
+#### Logout
+```http
+POST /api/logout
+Authorization: Bearer {token}
+Host: tenant1.yourdomain.com
 ```
+
+**Response:**
+```json
+{
+    "message": "Successfully logged out"
+}
+```
+
+## Architecture Overview
+
+### Database Structure
+
+```
+Central Database (multitenant_central):
+├── tenants
+├── domains  
+├── master_permissions
+└── migrations
+
+Tenant Database (tenant_1, tenant_2, etc.):
+├── users
+├── permissions
+├── roles
+├── model_has_permissions
+├── model_has_roles
+├── role_has_permissions
+└── your_business_tables (products, orders, etc.)
+```
+
+### Configuration Files
+
+#### Tenancy Configuration (`config/tenancy.php`)
+- Central database connection: `central`
+- Tenant database prefix: `tenant_`
+- Bootstrappers: Database, Cache, Filesystem, Queue
+
+#### Permission Configuration (`config/permission.php`)
+- Default guard: `api` (for JWT)
+- Cache expiration: 24 hours
+- Teams feature: Disabled
+
+#### Database Configuration (`config/database.php`)
+- Central connection for multi-tenancy management
+- MySQL connections for tenant databases
 
 ## Development Workflow
 
-1. **Add new features**: Work on central app first, then tenant-specific features
-2. **Database changes**: Create migrations for both landlord and tenant databases
-3. **Testing**: Test on multiple tenants to ensure isolation
-4. **Domain management**: Add new domains to `/etc/hosts` for local testing
+### Adding New Permissions
 
-## Production Considerations
+1. **Add to MasterPermissionSeeder:**
+```php
+['name' => 'new-permission', 'category' => 'category', 'description' => 'Description']
+```
 
-- Use proper domain/subdomain setup with SSL certificates
-- Implement proper database credentials per tenant
-- Set up automated tenant provisioning
-- Configure proper caching strategies
-- Implement database backup strategies per tenant
+2. **Reseed master permissions:**
+```bash
+php artisan db:seed --class=MasterPermissionSeeder
+```
 
-## Next Steps
+3. **Sync to all tenants:**
+```bash
+php artisan tenants:seed --class=TenantPermissionSeeder
+```
 
-- [ ] Implement JWT authentication (on progress, basic auth is already implemented)
-- [ ] Add permission system (master permissions + tenant roles)
-- [ ] Create API endpoints for tenant management
-- [ ] Add user management per tenant
-- [ ] Implement proper error handling and logging
+### Adding New Tenants
 
----
+1. **Create tenant and domain:**
+```php
+$tenant = Tenant::create(['id' => 'new-tenant']);
+$tenant->domains()->create(['domain' => 'new-tenant.yourdomain.com']);
+```
 
-**Note**: This is a development setup. For production deployment, additional security, performance, and reliability configurations are required.
+2. **Setup tenant database:**
+```bash
+php artisan tenants:migrate --tenants=new-tenant
+php artisan tenants:seed --tenants=new-tenant
+```
+
+## Security Considerations
+
+- JWT tokens expire after 60 minutes (configurable)
+- All API endpoints require authentication except login/register
+- Role-based access control enforced at API level
+- Tenant isolation at database level
+- Password hashing using Laravel's default hasher
+
+## Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+php artisan test
+
+# Run specific test suite
+php artisan test --testsuite=Feature
+
+# Run with coverage
+php artisan test --coverage
+```
+
+### API Testing with Postman/Insomnia
+
+1. Set base URL to tenant domain (e.g., `http://tenant1.yourdomain.com`)
+2. Register a user or login to get JWT token
+3. Add `Authorization: Bearer {token}` header to protected routes
+4. Test CRUD operations based on user permissions
+
+## Common Issues & Troubleshooting
+
+### Permission Guard Mismatch
+**Error:** `There is no permission named 'permission-name' for guard 'web'`
+
+**Solution:** Ensure all permissions and roles use `api` guard:
+```php
+// In seeders
+Role::create(['name' => 'role-name', 'guard_name' => 'api']);
+Permission::create(['name' => 'permission-name', 'guard_name' => 'api']);
+```
+
+### Database Connection Issues
+**Error:** `Database connection [central] not configured`
+
+**Solution:** Add central connection to `config/database.php`:
+```php
+'central' => [
+    'driver' => 'mysql',
+    'host' => env('DB_HOST', '127.0.0.1'),
+    'database' => env('DB_DATABASE', 'multitenant_central'),
+    // ... other config
+],
+```
+
+### JWT Token Issues
+**Error:** `Token has expired`
+
+**Solution:** Configure JWT TTL in `.env`:
+```env
+JWT_TTL=60  # Token valid for 60 minutes
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+For support and questions, please open an issue in the GitHub repository or contact the development team.
