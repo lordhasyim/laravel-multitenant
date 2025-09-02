@@ -3,36 +3,31 @@
 namespace App\Http\Middleware;
 
 use Closure;
-use Illuminate\Http\Request;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Tymon\JWTAuth\Exceptions\JWTException;
 
 class ValidateTenantToken
 {
-    public function handle(Request $request, Closure $next)
+    public function handle($request, Closure $next)
     {
         try {
-            // Get the token payload
-            $payload = JWTAuth::parseToken()->getPayload();
-            $tokenTenantId = $payload->get('tenant_id');
+            // Parse JWT token from Authorization header
+            $user = JWTAuth::parseToken()->authenticate();
+            $claims = JWTAuth::getPayload();
 
-            // Get tenant ID from header
-            $headerTenantId = $request->header('X-Tenant-Id');
-            
-            // Validate they match
-            if ($tokenTenantId !== $headerTenantId) {
-                return response()->json([
-                    'error' => 'Token does not belong to the specified tenant',
-                    'message' => 'Access denied'
-                ], 403);
+            $tokenTenantId = $claims->get('tenant_id');   // UUID from token
+            $currentTenantId = tenant('id');              // UUID from X-Tenant-Id
+
+            if ($tokenTenantId !== $currentTenantId) {
+                return response()->json(['error' => 'Invalid tenant token'], 403);
             }
-            
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Invalid token',
-                'message' => 'Token validation failed'
-            ], 401);
+
+            // Attach user to request if needed
+            $request->merge(['auth_user' => $user]);
+        } catch (JWTException $e) {
+            return response()->json(['error' => 'Token validation failed'], 401);
         }
-        
+
         return $next($request);
     }
 }

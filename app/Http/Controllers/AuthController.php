@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use App\Models\User;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
@@ -16,8 +15,8 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6|confirmed',
         ]);
 
@@ -26,17 +25,21 @@ class AuthController extends Controller
         }
 
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
+            'name'     => $request->name,
+            'email'    => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
-        $token = JWTAuth::fromUser($user);
+        // Issue token bound to tenant UUID
+        $token = JWTAuth::claims([
+            'tenant_id' => tenant('id'),
+        ])->fromUser($user);
 
         return response()->json([
             'message' => 'User registered successfully',
-            'user' => $user,
-            'token' => $token
+            'user'    => $user,
+            'token'   => $token,
+            'tenant'  => tenant('id') // UUID
         ], 201);
     }
 
@@ -44,9 +47,10 @@ class AuthController extends Controller
     {
         $credentials = $request->only('email', 'password');
 
-
         try {
-            if (!$token = JWTAuth::attempt($credentials)) {
+            if (!$token = JWTAuth::claims([
+                'tenant_id' => tenant('id'),
+            ])->attempt($credentials)) {
                 return response()->json(['error' => 'Invalid credentials'], 401);
             }
         } catch (JWTException $e) {
@@ -55,8 +59,9 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Login successful',
-            'token' => $token,
-            'user' => Auth::user()
+            'token'   => $token,
+            'user'    => Auth::user(),
+            'tenant'  => tenant('id'), // UUID
         ]);
     }
 
@@ -73,8 +78,8 @@ class AuthController extends Controller
     public function me()
     {
         return response()->json([
-            'user' => Auth::user(),
-            'tenant' => tenant('id') ?? 'central'
+            'user'   => Auth::user(),
+            'tenant' => tenant('id'), // UUID
         ]);
     }
 }

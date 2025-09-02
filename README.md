@@ -82,6 +82,9 @@ CREATE DATABASE multitenant_central;
 # Central database migrations
 php artisan migrate --database=central
 
+# Run tenant specific migration 
+php artisan tenants:migrate --tenants=3074b9b4-548f-4f06-9cfb-f5f4fa1f82cb
+
 # Generate JWT secret
 php artisan jwt:secret
 ```

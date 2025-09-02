@@ -11,7 +11,7 @@ class ProductController extends Controller
     public function index()
     {
         $products = Product::all();
-        
+
         return response()->json([
             'products' => $products,
             'tenant' => tenant('id'),
@@ -45,9 +45,42 @@ class ProductController extends Controller
     public function show($id)
     {
         $product = Product::findOrFail($id);
-        
+
         return response()->json([
             'product' => $product,
+            'tenant' => tenant('id')
+        ]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $product = Product::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'sometimes|required|string|max:255',
+            'price' => 'sometimes|required|numeric|min:0'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 400);
+        }
+
+        $product->update($request->only(['name', 'price']));
+
+        return response()->json([
+            'message' => 'Product updated successfully',
+            'product' => $product,
+            'tenant' => tenant('id')
+        ]);
+    }
+
+    public function destroy($id)
+    {
+        $product = Product::findOrFail($id);
+        $product->delete();
+
+        return response()->json([
+            'message' => 'Product deleted successfully',
             'tenant' => tenant('id')
         ]);
     }
