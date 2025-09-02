@@ -14,9 +14,9 @@ class ValidateTenantToken
             // Get the token payload
             $payload = JWTAuth::parseToken()->getPayload();
             $tokenTenantId = $payload->get('tenant_id');
-            
+
             // Get tenant ID from header
-            $headerTenantId = (int) $request->header('X-Tenant-Id');
+            $headerTenantId = $request->header('X-Tenant-Id');
             
             // Validate they match
             if ($tokenTenantId !== $headerTenantId) {
