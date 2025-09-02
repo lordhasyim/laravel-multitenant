@@ -2,25 +2,24 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Stancl\Tenancy\Contracts\TenantDatabaseManager;
+use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
 use Stancl\Tenancy\Contracts\TenantWithDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDomains;
-use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
-use Stancl\Tenancy\DatabaseConfig;
+use Illuminate\Support\Str;
 
 class Tenant extends BaseTenant implements TenantWithDatabase
 {
-     use HasDatabase, HasDomains;
+    use HasDatabase, HasDomains;
 
-    // Laravel will handle auto-incrementing integer ID automatically
-    public $incrementing = true;
-    protected $keyType = 'int';
+    // Configure for UUID primary key
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
         'id',
         'name',
+        'slug',
         'email',
         'domain',
         'db_name',
@@ -34,12 +33,34 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         'db_password'
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Automatically generate UUID and slug when creating a new tenant
+        static::creating(function ($tenant) {
+            if (empty($tenant->id)) {
+                $tenant->id = (string) Str::uuid();
+            }
+
+            if (empty($tenant->slug) && !empty($tenant->name)) {
+                $tenant->slug = static::generateSlug($tenant->name);
+            }
+
+            // Auto-generate database name from slug if not provided
+            if (empty($tenant->db_name) && !empty($tenant->slug)) {
+                $tenant->db_name = 'tenant_' . $tenant->slug;
+            }
+        });
+    }
+
     // Override the method that determines which columns are NOT stored in JSON
     public static function getCustomColumns(): array
     {
         return [
             'id',
             'name',
+            'slug',
             'email', 
             'domain',
             'db_name',
@@ -52,21 +73,49 @@ class Tenant extends BaseTenant implements TenantWithDatabase
         ];
     }
 
-   // Custom method to get formatted database name
+    // Custom method to get formatted database name using slug
     public function getDatabaseName(): string
     {
-        return $this->db_name ?? 'tenant_' . $this->id;
+        // If db_name is explicitly set, use it
+        if ($this->db_name) {
+            return $this->db_name;
+        }
+
+        // Otherwise, generate from slug
+        return 'tenant_' . $this->slug;
     }
 
-    // Override the database name for tenancy
-    // public function getTenantKeyName(): string
-    // {
-    //     return 'id';
-    // }
+    // Static method to generate slug from name
+    public static function generateSlug(string $name): string
+    {
+        $slug = Str::slug($name, '_');
 
-    // Override how the database name is determined
-    // public function getConnectionName(): string
-    // {
-    //     return 'tenant';
-    // }
+        // Ensure uniqueness by checking database
+        $originalSlug = $slug;
+        $counter = 1;
+
+        while (static::where('slug', $slug)->exists()) {
+            $slug = $originalSlug . '_' . $counter;
+            $counter++;
+        }
+
+        return $slug;
+    }
+
+    // Method to generate database name from slug
+    public static function generateDatabaseName(string $slug): string
+    {
+        return 'tenant_' . $slug;
+    }
+
+    // Helper methods for folder/file naming using slug
+    public function getStorageFolder(): string
+    {
+        return 'tenants/' . $this->slug;
+    }
+
+    public function getUploadPath(string $type = 'general'): string
+    {
+        return $this->getStorageFolder() . '/' . $type;
+    }
 }

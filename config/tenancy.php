@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\Domain;
 use App\Models\Tenant;
+use Stancl\Tenancy\UUIDGenerator;
 
 // use Stancl\Tenancy\Database\Models\Domain;
 // use Stancl\Tenancy\Database\Models\Tenant;
@@ -12,7 +13,7 @@ return [
     'tenant_model' => Tenant::class,
     // 'domain_model' => Domain::class,
     // 'id_generator' => Stancl\Tenancy\UUIDGenerator::class,
-    'id_generator' => null,
+    'id_generator' => UUIDGenerator::class,
 
 
 
@@ -59,7 +60,13 @@ return [
          * Tenant database names are created like this:
          * prefix + tenant_id + suffix.
          */
-        'prefix' => 'tenant_',
+        /**
+         * Tenant database names are created using the getDatabaseName() method
+         * in your Tenant model, which generates name-based databases like:
+         * tenant_alamsegar, tenant_kretekjaya, etc.
+         */
+        // 'prefix' => 'tenant_',
+        'prefix' => '', // Empty because we handle naming in the model
         'suffix' => '',
 
         /**

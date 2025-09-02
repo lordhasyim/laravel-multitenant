@@ -100,9 +100,127 @@ Tenants are created with their own database and configuration:
 
 ```php
 // Create a tenant programmatically
-$tenant = Tenant::create(['id' => 'tenant1']);
-$tenant->domains()->create(['domain' => 'tenant1.yourdomain.com']);
+$tenant = Tenant::create(['id' => '550e8400-e29b-41d4-a716-446655440000']);
+$tenant->domains()->create(['domain' => 'domain.com']);
 ```
+
+## Running Setup Via Command
+```bash
+# Central database
+php artisan migrate --database=central
+
+# Seed master permissions
+php artisan db:seed --class=MasterPermissionSeeder
+```
+## Create tenants using the command
+```bash
+# Auto-generate slug from name
+php artisan tenant:create "Alamsegar" "admin@alamsegar.com"
+# Creates: slug=alamsegar, db=tenant_alamsegar
+
+# With custom slug
+php artisan tenant:create "Kretek Jaya" "admin@kretekjaya.com" --slug="kretekjaya"  
+# Creates: slug=kretekjaya, db=tenant_kretekjaya
+
+# With spaces and special characters (auto-slugified)
+php artisan tenant:create "PT. Multi Corp Indonesia" "admin@multicorp.co.id"
+# Creates: slug=pt_multi_corp_indonesia, db=tenant_pt_multi_corp_indonesia
+```
+## Example using command
+```bash
+$ php artisan tenant:create "Alamsegar" "admin@alamsegar.com"
+Tenant created successfully!
++--------------+--------------------------------------+
+| Field        | Value                                |
++--------------+--------------------------------------+
+| ID           | 25e6397d-5851-4443-94db-f6b8dc010814 |
+| Name         | Alamsegar                            |
+| Slug         | alamsegar                            |
+| Email        | admin@alamsegar.com                  |
+| Database     | tenant_alamsegar                     |
+| Storage Path | tenants/alamsegar                    |
++--------------+--------------------------------------+
+
+ Do you want to run tenant migrations? (yes/no) [yes]:
+ > yes
+
+Tenant: 25e6397d-5851-4443-94db-f6b8dc010814
+
+   INFO  Nothing to migrate.  
+
+ Do you want to seed tenant data? (yes/no) [yes]:
+ > yes
+
+Tenant: 25e6397d-5851-4443-94db-f6b8dc010814
+
+   INFO  Seeding database.  
+
+
+```
+#### With custom slug
+
+```bash
+$ php artisan tenant:create "Kretek Jaya" "admin@kretekjaya.com" --slug="kretekjaya"  
+Tenant created successfully!
++--------------+--------------------------------------+
+| Field        | Value                                |
++--------------+--------------------------------------+
+| ID           | 3c6b30e2-c068-477c-bbe7-277e4a22ddaa |
+| Name         | Kretek Jaya                          |
+| Slug         | kretekjaya                           |
+| Email        | admin@kretekjaya.com                 |
+| Database     | tenant_kretekjaya                    |
+| Storage Path | tenants/kretekjaya                   |
++--------------+--------------------------------------+
+
+ Do you want to run tenant migrations? (yes/no) [yes]:
+ > yes
+
+Tenant: 3c6b30e2-c068-477c-bbe7-277e4a22ddaa
+
+   INFO  Nothing to migrate.  
+
+ Do you want to seed tenant data? (yes/no) [yes]:
+ > yes
+
+Tenant: 3c6b30e2-c068-477c-bbe7-277e4a22ddaa
+
+   INFO  Seeding database.  
+
+
+```
+
+#### With spaces and special characters (auto-slugified)
+- This will Creates: slug=pt_multi_corp_indonesia, db=tenant_pt_multi_corp_indonesia
+```bash
+$ php artisan tenant:create "PT. Multi Corp Indonesia" "admin@multicorp.co.id"
+Tenant created successfully!
++--------------+--------------------------------------+
+| Field        | Value                                |
++--------------+--------------------------------------+
+| ID           | b3cc623b-fea6-454d-a5fe-33c2f9556168 |
+| Name         | PT. Multi Corp Indonesia             |
+| Slug         | pt_multi_corp_indonesia              |
+| Email        | admin@multicorp.co.id                |
+| Database     | tenant_pt_multi_corp_indonesia       |
+| Storage Path | tenants/pt_multi_corp_indonesia      |
++--------------+--------------------------------------+
+
+ Do you want to run tenant migrations? (yes/no) [yes]:
+ > yes
+
+Tenant: b3cc623b-fea6-454d-a5fe-33c2f9556168
+
+   INFO  Nothing to migrate.  
+
+ Do you want to seed tenant data? (yes/no) [yes]:
+ > yes
+
+Tenant: b3cc623b-fea6-454d-a5fe-33c2f9556168
+
+   INFO  Seeding database.
+```
+
 
 ### Tenant Database Setup
 
@@ -129,7 +247,7 @@ php artisan tenants:seed
 
 ### API Testing with Postman/Insomnia
 
-1. Set base URL to tenant domain (e.g., `http://tenant1.yourdomain.com`)
+1. Set base URL to tenant domain (e.g., `http://domain.com`)
 2. Register a user or login to get JWT token
 3. Add `Authorization: Bearer {token}` header to protected routes
 4. Add X-Tenant-Id : tenant_id in header
@@ -146,6 +264,7 @@ Master permissions are defined centrally and synced to tenant databases:
 - **Products:** `create-product`, `view-product`, `edit-product`, `delete-product`
 - **Users:** `create-user`, `view-user`, `edit-user`, `delete-user`
 
+## Example for testing the functional of the apps
 ### Tenant-Specific Roles
 
 Each tenant can have custom roles based on their business needs:
@@ -165,16 +284,17 @@ Each tenant can have custom roles based on their business needs:
 ### Authentication Endpoints
 
 All authentication endpoints work within tenant context.
+### API Usage Example
 
 #### Register User
 ```http
 POST /api/register
+X-Tenant-Id: 550e8400-e29b-41d4-a716-446655440000
 Content-Type: application/json
-Host: tenant1.yourdomain.com
 
 {
-    "name": "John Doe",
-    "email": "john@example.com",
+    "name": "John Doe",  
+    "email": "john@alamsegar.com",
     "password": "password123",
     "password_confirmation": "password123"
 }
@@ -198,8 +318,9 @@ Host: tenant1.yourdomain.com
 #### Login
 ```http
 POST /api/login
+X-Tenant-Id: 550e8400-e29b-41d4-a716-446655440000
 Content-Type: application/json
-Host: tenant1.yourdomain.com
+Host: domain.com
 
 {
     "email": "john@example.com",
@@ -223,8 +344,9 @@ Host: tenant1.yourdomain.com
 #### Get User Profile
 ```http
 GET /api/me
+X-Tenant-Id: 550e8400-e29b-41d4-a716-446655440000
 Authorization: Bearer {token}
-Host: tenant1.yourdomain.com
+Host: domain.com
 ```
 
 **Response:**
@@ -237,15 +359,16 @@ Host: tenant1.yourdomain.com
         "roles": ["manager"],
         "permissions": ["create-product", "view-product", "edit-product", "delete-product"]
     },
-    "tenant": "tenant1"
+    "tenant": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 
 #### Logout
 ```http
 POST /api/logout
+X-Tenant-Id: 550e8400-e29b-41d4-a716-446655440000
 Authorization: Bearer {token}
-Host: tenant1.yourdomain.com
+Host: domain.com
 ```
 
 **Response:**
@@ -256,7 +379,7 @@ Host: tenant1.yourdomain.com
 ```
 
 ## Architecture Overview
-
+- Tenant Database is using schema tenant_{tenant_name} ex: tenant_starcompany
 ### Database Structure
 
 ```
@@ -275,6 +398,11 @@ Tenant Database (tenant_1, tenant_2, etc.):
 ├── role_has_permissions
 └── your_business_tables (products, orders, etc.)
 ```
+
+### Slug will be used in
+- Database naming: tenant_alamsegar (clean and readable)
+- File storage: storage/tenants/alamsegar/uploads/
+- Folder organization: public/tenants/alamsegar/assets/
 
 ### Configuration Files
 
@@ -350,7 +478,7 @@ php artisan test --coverage
 
 ### API Testing with Postman/Insomnia
 
-1. Set base URL to tenant domain (e.g., `http://tenant1.yourdomain.com`)
+1. Set base URL to tenant domain (e.g., `http://domain.com`)
 2. Register a user or login to get JWT token
 3. Add `Authorization: Bearer {token}` header to protected routes
 4. Test CRUD operations based on user permissions
