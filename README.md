@@ -125,16 +125,38 @@ php artisan tenant:create "Kretek Jaya" "admin@kretekjaya.com" --slug="kretekjay
 # With spaces and special characters (auto-slugified)
 php artisan tenant:create "PT. Multi Corp Indonesia" "admin@multicorp.co.id"
 # Creates: slug=pt_multi_corp_indonesia, db=tenant_pt_multi_corp_indonesia
+
 ```
+
+## To Check Tenant Database
+ - php artisan tenant:list --check-db
+ 
+```bash
+$ php artisan tenant:list --check-db
++-------------+------------+-----------+---------------------+------------------+-----------+
+| ID          | Name       | Slug      | Email               | Database         | DB Exists |
++-------------+------------+-----------+---------------------+------------------+-----------+
+| c5a7ac10... | Alam Segar | alamsegar | admin@alamsegar.com | tenant_alamsegar | ✅        |
++-------------+------------+-----------+---------------------+------------------+-----------+
+Total tenants: 1
+
+
+```
+
 ## Example using command
 ```bash
-$ php artisan tenant:create "Alamsegar" "admin@alamsegar.com"
-Tenant created successfully!
+$ php artisan tenant:create "Alam Segar" "admin@alamsegar.com" --slug=alamsegar
+Creating tenant: Alam Segar
+Slug: alamsegar
+Database: tenant_alamsegar
+Creating physical database: tenant_alamsegar
+✅ Database tenant_alamsegar created successfully!
+✅ Tenant record created successfully!
 +--------------+--------------------------------------+
 | Field        | Value                                |
 +--------------+--------------------------------------+
-| ID           | 25e6397d-5851-4443-94db-f6b8dc010814 |
-| Name         | Alamsegar                            |
+| ID           | c5a7ac10-e306-416f-bc81-ad5e34709354 |
+| Name         | Alam Segar                           |
 | Slug         | alamsegar                            |
 | Email        | admin@alamsegar.com                  |
 | Database     | tenant_alamsegar                     |
@@ -144,16 +166,18 @@ Tenant created successfully!
  Do you want to run tenant migrations? (yes/no) [yes]:
  > yes
 
-Tenant: 25e6397d-5851-4443-94db-f6b8dc010814
+Running tenant migrations...
+✅ Migrations completed successfully!
 
-   INFO  Nothing to migrate.  
-
- Do you want to seed tenant data? (yes/no) [yes]:
+ Do you want to seed tenant data? (yes/no) [no]:
  > yes
 
-Tenant: 25e6397d-5851-4443-94db-f6b8dc010814
+Seeding tenant data...
+✅ Seeding completed successfully!
 
-   INFO  Seeding database.  
+🎉 Tenant 'Alam Segar' created successfully!
+You can now use tenant ID: c5a7ac10-e306-416f-bc81-ad5e34709354
+
 
 
 ```
